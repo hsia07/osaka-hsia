@@ -15911,5 +15911,95 @@ function toggleGeminiKeySection(){
 }
 </script>
 
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script id="cloud-sync-v1">
+(function(){
+  if(window.__CLOUD_SYNC_V1__) return;
+  window.__CLOUD_SYNC_V1__ = true;
+
+  // TODO: 從 Firebase 主控台「專案設定 → 一般 → 你的應用程式」複製貼上，取代下面的 apiKey
+  var firebaseConfig = {
+    apiKey: "PASTE_YOUR_FIREBASE_API_KEY_HERE",
+    databaseURL: "https://osaka-f437e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "osaka-f437e"
+  };
+
+  if(!firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('PASTE_') === 0){
+    console.warn('[cloud-sync] 尚未設定 firebaseConfig.apiKey，雲端同步目前停用。');
+    return;
+  }
+
+  firebase.initializeApp(firebaseConfig);
+  var tripRef = firebase.database().ref('osaka-trip');
+  var pushTimer = null;
+
+  function refreshUi(){
+    try{ if(typeof window.buildMgrid==='function' && document.getElementById('mgrid')) window.buildMgrid(); }catch(e){}
+    try{ if(typeof window.renderExpForm==='function') window.renderExpForm(); }catch(e){}
+    try{ if(typeof window.renderElist==='function') window.renderElist(); }catch(e){}
+    try{ if(typeof window.renderSplit==='function') window.renderSplit(); }catch(e){}
+  }
+
+  function schedulePush(){
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(function(){
+      tripRef.update({
+        members: window.members || [],
+        expenses: window.expenses || [],
+        jpyRate: Number(window.rate) || 0.22
+      });
+    }, 400);
+  }
+
+  // 遠端資料異動時（其他旅伴的裝置寫入後），即時更新這台裝置的畫面
+  tripRef.child('members').on('value', function(snap){
+    var val = snap.val();
+    if(!val) return;
+    window.members = members = val;
+    refreshUi();
+  });
+
+  tripRef.child('expenses').on('value', function(snap){
+    var val = snap.val();
+    if(!val) return;
+    window.expenses = expenses = Array.isArray(val) ? val : Object.values(val);
+    refreshUi();
+  });
+
+  tripRef.child('jpyRate').on('value', function(snap){
+    var val = snap.val();
+    if(val==null) return;
+    window.rate = rate = Number(val);
+    var rinp = document.getElementById('rinp');
+    if(rinp) rinp.value = val;
+  });
+
+  // 本機異動後（新增/刪除旅伴或記帳），推上雲端讓其他人同步看到
+  ['saveSetup','updateExchangeRate'].forEach(function(name){
+    var orig = window[name];
+    if(typeof orig !== 'function') return;
+    window[name] = function(){
+      var r = orig.apply(this, arguments);
+      schedulePush();
+      return r;
+    };
+    if(name==='saveSetup') try{ saveSetup = window.saveSetup; }catch(e){}
+    if(name==='updateExchangeRate') try{ updateExchangeRate = window.updateExchangeRate; }catch(e){}
+  });
+
+  // renderElist 是所有記帳異動（新增/刪除/掃描辨識加入）共同會呼叫的收尾函式，包這一層即可涵蓋全部情境
+  var origRenderElist = window.renderElist;
+  if(typeof origRenderElist === 'function'){
+    window.renderElist = function(){
+      var r = origRenderElist.apply(this, arguments);
+      schedulePush();
+      return r;
+    };
+    try{ renderElist = window.renderElist; }catch(e){}
+  }
+})();
+</script>
+
 </body>
 </html>
