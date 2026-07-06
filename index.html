@@ -15918,15 +15918,23 @@ function toggleGeminiKeySection(){
   if(window.__CLOUD_SYNC_V1__) return;
   window.__CLOUD_SYNC_V1__ = true;
 
-  // TODO: 從 Firebase 主控台「專案設定 → 一般 → 你的應用程式」複製貼上，取代下面的 apiKey
   var firebaseConfig = {
-    apiKey: "PASTE_YOUR_FIREBASE_API_KEY_HERE",
+    apiKey: "AIzaSyAycJOcOtTKFxEo4hEaZdfBfdvxbIvVsSI",
+    authDomain: "osaka-f437e.firebaseapp.com",
     databaseURL: "https://osaka-f437e-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "osaka-f437e"
+    projectId: "osaka-f437e",
+    storageBucket: "osaka-f437e.firebasestorage.app",
+    messagingSenderId: "630763035283",
+    appId: "1:630763035283:web:7abd4abd5b2f8c4cc80b66"
   };
 
   if(!firebaseConfig.apiKey || firebaseConfig.apiKey.indexOf('PASTE_') === 0){
     console.warn('[cloud-sync] 尚未設定 firebaseConfig.apiKey，雲端同步目前停用。');
+    return;
+  }
+
+  if(typeof firebase === 'undefined'){
+    console.warn('[cloud-sync] Firebase SDK 未能載入（可能是網路問題），雲端同步這次先跳過。');
     return;
   }
 
